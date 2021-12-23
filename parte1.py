@@ -1,66 +1,16 @@
 import numpy as np
 import argparse
 import statistics
+from timeit import default_timer as timer
 from queue import Queue
 from queue import LifoQueue
 import bisect
-
-parser = argparse.ArgumentParser()
-parser.add_argument("-i", "--inputfile", help = "Path Input File") 
-parser.add_argument("-k", "--kind", help = "Representacao das arestas em  matriz de adjacencia(1) ou lista de adjacencia(2) ")
-parser.add_argument("-o", "--outputfile", help = "Path Output File") 
-args = parser.parse_args()
-
-
-## Processar Arquivo Entrada
-'''
-Sua biblioteca deve ser capaz de ler um grafo de um arquivo texto. O formato do
-grafo no arquivo sera o seguinte. 
-A primeira linha informa o numero de vertices do grafo.
-Cada linha subsequente informa as arestas. Um exemplo de um grafo e seu respectivo arquivo
-'''
-def processarArquivoEntrada(arquivoentrada):
-    f = open(arquivoentrada, "r")
-    nvertices=f.readline() # primeira linha
-    arestas=[]
-    while(1):
-        line = f.readline()
-        if (line != ''):
-            line=line.replace('\n',"")
-            line=line.replace('\r',"")
-            aresta=line.split(" ", 1)
-            aresta=[int(aresta[0])-1,int(aresta[1])-1]
-            arestas.append(aresta)
-        else:
-            break
-    f.close()
-    return arestas,int(nvertices)
-## Processar arquivo Saida
-'''
-Saıda. Sua biblioteca deve ser capaz de gerar um arquivo texto com as seguintes informacoes
-sobre o grafo: numero de vertices, numero de arestas, grau minimo, grau maximo, grau medio,
-e mediana de grau. Alem disso, imprimir informacoes sobre as componentes conexas (ver
-abaixo).
-'''
-# def processarArquivoSaida(arquivosaida):
-#     f = open(arquivosaida, "wr")
-#     f.write(str(nvertices))
-#     f.write(str(narestas))
-#     f.close()
-
-# Cli OUTPUT
-# print("Numero de Vertices: "+str(nvertices))
-# print("Numero de arestas: "+str(narestas))
-# print("Grau Maximo: " +str(matriz.calcula_maior_grau))
-# print("Grau Minimo: " +str(matriz.calcula_menor_grau))
-# print("Grau Medio:  " +str(matriz.calcula_media_grau))
-# print("Mediana de Grau : "+str(matriz.calcula_mediana_grau))    
-#
 
 class grafo_generico():
     def __init__(self,arestas,numero_vertices):
         self.numero_vertices = numero_vertices
         self.lista_graus = np.zeros(numero_vertices)
+        self.numero_arestas = len(arestas)
         
 
     def gera_vertices_adjacentes(self,vertice_origem):
@@ -203,6 +153,7 @@ class grafo_generico():
 class grafo_matriz_adjacencia(grafo_generico):
     def __init__(self,arestas,numero_vertices):
         self.numero_vertices = numero_vertices
+        self.numero_arestas = len(arestas)
         self.matriz = np.zeros([numero_vertices, numero_vertices])
         self.lista_graus = np.zeros(numero_vertices)
         for aresta in arestas:
@@ -217,11 +168,6 @@ class grafo_matriz_adjacencia(grafo_generico):
             self.lista_graus[aresta[1]]+= 1
             self.lista_graus[aresta[0]]+= 1
 
-
-    def calcula_grau_vertice(self,vertice):
-        grau = np.sum(self.matriz[vertice])
-        return grau
-
     def gera_vertices_adjacentes(self,vertice_origem,reverter = False):
         gerador = range(self.numero_vertices)
         if reverter: gerador = reversed(gerador)
@@ -232,6 +178,7 @@ class grafo_matriz_adjacencia(grafo_generico):
 class grafo_matriz_esparsa(grafo_generico):
     def __init__(self,arestas,numero_vertices):
         self.numero_vertices = numero_vertices
+        self.numero_arestas = len(arestas)
         self.esparsa = set()
         self.lista_graus = np.zeros(numero_vertices)
         for aresta in arestas:
@@ -247,11 +194,6 @@ class grafo_matriz_esparsa(grafo_generico):
             self.lista_graus[aresta[1]]+= 1
             self.lista_graus[aresta[0]]+= 1
 
-
-    def calcula_grau_vertice(self,vertice):
-        grau = np.sum(self.esparsa[vertice])
-        return grau
-
     def gera_vertices_adjacentes(self,vertice_origem,reverter = False):
         gerador = range(self.numero_vertices)
         if reverter: gerador = reversed(gerador)
@@ -263,6 +205,7 @@ class grafo_matriz_esparsa(grafo_generico):
 class grafo_lista_adjacencia(grafo_generico): 
     def __init__(self,arestas,numero_vertices):  
         self.numero_vertices = numero_vertices
+        self.numero_arestas = len(arestas)
         self.lista_adjacencias = []
         for lista in range(self.numero_vertices):self.lista_adjacencias.append([])
         self.lista_graus = np.zeros(numero_vertices)
@@ -290,22 +233,173 @@ class grafo_lista_adjacencia(grafo_generico):
 
     
 
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-i", "--inputfile", help = "Path Input File") 
+parser.add_argument("-k", "--kind", help = "Representacao das arestas em  matriz de adjacencia(1) ou lista de adjacencia(2) ")
+args = parser.parse_args()
+
+
+## Processar Arquivo Entrada
+'''
+Sua biblioteca deve ser capaz de ler um grafo de um arquivo texto. O formato do
+grafo no arquivo sera o seguinte. 
+A primeira linha informa o numero de vertices do grafo.
+Cada linha subsequente informa as arestas. Um exemplo de um grafo e seu respectivo arquivo
+'''
+def processarArquivoEntrada(arquivoentrada):
+    f = open(arquivoentrada, "r")
+    nvertices=f.readline() # primeira linha
+    arestas=[]
+    while(1):
+        line = f.readline()
+        if (line != ''):
+            line=line.replace('\n',"")
+            line=line.replace('\r',"")
+            aresta=line.split(" ", 1)
+            aresta=[int(aresta[0])-1,int(aresta[1])-1]
+            arestas.append(aresta)
+        else:
+            break
+    f.close()
+    return arestas,int(nvertices)
+## Processar arquivo Saida
+'''
+Saida. Sua biblioteca deve ser capaz de gerar um arquivo texto com as seguintes informacoes
+sobre o grafo: numero de vertices, numero de arestas, grau minimo, grau maximo, grau medio,
+e mediana de grau. Alem disso, imprimir informacoes sobre as componentes conexas (ver
+abaixo).
+'''
+def processarArquivoSaida(grafo,arquivosaida):
+    f = open(arquivosaida, "a")
+    f.write("Numero de Vertices:"+str(grafo.numero_vertices)+"\n")
+    f.write("Numero de Arestas:"+str(grafo.numero_arestas)+"\n")
+    
+    f.write("Maior Grau:"+str(grafo.calcula_maior_grau())+"\n")
+    f.write("Menor Grau:"+str(grafo.calcula_menor_grau())+"\n")
+    f.write("Media Grau:"+str(grafo.calcula_media_grau())+"\n")
+    f.write("Mediana Grau:"+str(grafo.calcula_mediana_grau())+"\n")
+    # 4
+    arvore_busca1BFS=grafo.gera_arvore_largura(0)
+    arvore_busca2BFS=grafo.gera_arvore_largura(1)
+    arvore_busca3BFS=grafo.gera_arvore_largura(2)
+    arvore_busca1DFS=grafo.gera_arvore_profundidade(0)
+    arvore_busca2DFS=grafo.gera_arvore_profundidade(1)
+    arvore_busca3DFS=grafo.gera_arvore_profundidade(2)
+    ## BFS
+    f.write("Pai do vertice 10 na busca BFS em 1:"+str(arvore_busca1BFS[0][9])+"\n")
+    f.write("Pai do vertice 20 na busca BFS em 1:"+str(arvore_busca1BFS[0][19])+"\n")
+    f.write("Pai do vertice 30 na busca BFS em 1:"+str(arvore_busca1BFS[0][29])+"\n")
+    f.write("Pai do vertice 10 na busca BFS em 2:"+str(arvore_busca2BFS[0][9])+"\n")
+    f.write("Pai do vertice 20 na busca BFS em 2:"+str(arvore_busca2BFS[0][19])+"\n")
+    f.write("Pai do vertice 30 na busca BFS em 2:"+str(arvore_busca2BFS[0][29])+"\n")
+    f.write("Pai do vertice 10 na busca BFS em 3:"+str(arvore_busca3BFS[0][9])+"\n")
+    f.write("Pai do vertice 20 na busca BFS em 3:"+str(arvore_busca3BFS[0][19])+"\n")
+    f.write("Pai do vertice 30 na busca BFS em 3:"+str(arvore_busca3BFS[0][29])+"\n")
+    f.write("Pai do vertice 10 na busca DFS em 1:"+str(arvore_busca1DFS[0][9])+"\n")
+    f.write("Pai do vertice 20 na busca DFS em 1:"+str(arvore_busca1DFS[0][19])+"\n")
+    f.write("Pai do vertice 30 na busca DFS em 1:"+str(arvore_busca1DFS[0][29])+"\n")
+    f.write("Pai do vertice 10 na busca DFS em 2:"+str(arvore_busca2DFS[0][9])+"\n")
+    f.write("Pai do vertice 20 na busca DFS em 2:"+str(arvore_busca2DFS[0][19])+"\n")
+    f.write("Pai do vertice 30 na busca DFS em 2:"+str(arvore_busca2DFS[0][29])+"\n")
+    f.write("Pai do vertice 10 na busca DFS em 3:"+str(arvore_busca3DFS[0][9])+"\n")
+    f.write("Pai do vertice 20 na busca DFS em 3:"+str(arvore_busca3DFS[0][19])+"\n")
+    f.write("Pai do vertice 30 na busca DFS em 3:"+str(arvore_busca3DFS[0][29])+"\n")
+    # 5
+    f.write("Distancia vertice 10 20:"+str(grafo.calcula_distancia_vertices(10,20))+"\n")
+    f.write("Distancia vertice 10 30:"+str(grafo.calcula_distancia_vertices(10,30))+"\n")
+    f.write("Distancia vertice 20 20:"+str(grafo.calcula_distancia_vertices(20,30))+"\n")
+    # 6
+    componentes_conexas=grafo.descobre_componentes_conexas()
+    f.write("Componentes Conexas:"+str(componentes_conexas)+"\n")
+    f.write("Numero Componentes Conexas:"+str(len(componentes_conexas))+"\n")
+    f.write("Tamanho da Maior Componente Conexa:"+str(componentes_conexas[0][0])+"\n")
+    f.write("Tamanho da Menor Componente Conexa:"+str(componentes_conexas[-1][0])+"\n")
+    f.close()
+ 
 ### Debug
-arg1,arg2 = processarArquivoEntrada(args.inputfile)
-matrizteste=grafo_matriz_adjacencia(arg1,arg2)
-listateste = grafo_lista_adjacencia(arg1,arg2)
-esparsateste = grafo_matriz_esparsa(arg1,arg2)
+# matrizteste=grafo_matriz_adjacencia(arg1,arg2)
+# listateste = grafo_lista_adjacencia(arg1,arg2)
+# esparsateste = grafo_matriz_esparsa(arg1,arg2)
 # # print(matrizteste.matriz)
 # print(matrizteste.gera_arvore_largura(3))
 # print(matrizteste.calcula_distancia_vertices(1,5))
-#print(matrizteste.calcula_diametro_grafo())
-#print(listateste.calcula_diametro_grafo())
-print(listateste.gera_arvore_profundidade(4))
-print(esparsateste.gera_arvore_profundidade(4))
-print(esparsateste.descobre_componentes_conexas())
-print(listateste.gera_arvore_largura(4))
-print(listateste.descobre_componentes_conexas())
-# print(matrizteste.calcula_maior_grau())
-# print(matrizteste.calcula_menor_grau())
-# print(matrizteste.calcula_mediana_grau())
-# print(matrizteste.calcula_media_grau())
+# print(matrizteste.calcula_diametro_grafo())
+# print(listateste.calcula_diametro_grafo())
+# print(listateste.gera_arvore_profundidade(4))
+# ##########
+#
+
+cleanfilename=args.inputfile.split("/")[-1]
+arg1,arg2 = processarArquivoEntrada(args.inputfile)
+if args.kind == "1":
+    representacao="Matriz_Adjacencia"
+    grafo=grafo_matriz_esparsa(arg1,arg2)
+    ## Busca Largura
+    vertices_com_adjacencia=[]
+    limitador=0
+    for i in grafo.esparsa:
+        variavelauxiliar=i[1]
+        if variavelauxiliar not in vertices_com_adjacencia:
+            vertices_com_adjacencia.append(variavelauxiliar)
+            limitador+=1
+        if limitador > 999:
+            break
+    while len(vertices_com_adjacencia) < 1000:
+        for i in range(grafo.numero_vertices):
+            if i not in vertices_com_adjacencia:
+                vertices_com_adjacencia.append(i)
+            if len(vertices_com_adjacencia) == 1000:
+                break
+        for i in range(grafo.numero_vertices):
+            vertices_com_adjacencia.append(i)
+            if len(vertices_com_adjacencia) == 1000:
+                break
+    start = timer()
+    for vertice in vertices_com_adjacencia:
+        grafo.gera_arvore_largura(vertice)
+    end = timer()
+    print("saida:{};{};{}".format(representacao,"Largura", end-start/1000))  
+    ## Busca Profundidade
+    start = timer() 
+    for vertice in vertices_com_adjacencia:
+        grafo.gera_arvore_profundidade(vertice)
+    end = timer()
+    print("saida:{};{};{}".format(representacao,"Profundidade", end-start/1000))
+    processarArquivoSaida(grafo,cleanfilename+"-"+representacao+"-informacoesgrafo.txt")        
+elif args.kind == "2":
+    representacao="Lista_Adjacencia"
+    grafo=grafo_lista_adjacencia(arg1,arg2)
+    ## Busca Largura
+    vertices_com_adjacencia=[]
+    limitador=0
+    for i in grafo.lista_adjacencias:
+        if len(i)>0:
+            if i[0] not in vertices_com_adjacencia:
+                vertices_com_adjacencia.append(i[0])
+            limitador+=1
+        if limitador > 999:
+            break
+    while len(vertices_com_adjacencia) < 1000:
+        for i in range(grafo.numero_vertices):
+            if i not in vertices_com_adjacencia:
+                vertices_com_adjacencia.append(i)
+            if len(vertices_com_adjacencia) == 1000:
+                break
+        for i in range(grafo.numero_vertices):
+            vertices_com_adjacencia.append(i)
+            if len(vertices_com_adjacencia) == 1000:
+                break
+    start = timer()
+    for vertice in vertices_com_adjacencia:
+        grafo.gera_arvore_largura(vertice)
+    end = timer()
+    print("saida:{};{};{}".format(representacao,"Largura", end-start/1000))  
+    ## Busca Profundidade
+    start = timer() 
+    for vertice in vertices_com_adjacencia:
+        grafo.gera_arvore_profundidade(vertice)
+    end = timer()
+    print("saida:{};{};{}".format(representacao,"Profundidade", end-start/1000))
+    processarArquivoSaida(grafo,cleanfilename+"-"+representacao+"-informacoesgrafo.txt")  
